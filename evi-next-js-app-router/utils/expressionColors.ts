@@ -44,16 +44,7 @@ export const expressionColors = {
   relief: "#fe927a",
   romance: "#f0cc86",
   sadness: "#305575",
-  sarcasm: "#ffffff",
-  satisfaction: "#a6ddaf",
-  sexualDesire: "#aa0d59",
-  shame: "#8a6262",
-  surprise: "#70e63a",
-  surpriseNegative: "#70e63a",
-  surprisePositive: "#7affff",
-  sympathy: "#7f88e0",
-  tiredness: "#757575",
-  triumph: "#ec8132",
+  sarcasm: "#9e44c4", // Changed from "#ffffff" to a purple color
 } as const;
 
 export const isExpressionColor = (
