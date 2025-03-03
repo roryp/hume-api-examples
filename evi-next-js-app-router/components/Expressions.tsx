@@ -26,7 +26,8 @@ export default function Expressions({
     "realization",   // Added as they often indicate realizing a contradiction
     "surpriseNegative", // Added as it can indicate unexpected contradiction
     "doubt",        // Added as it signals uncertainty that often appears in sarcasm
-    "confusion"     // Added as it can indicate cognitive dissonance in sarcasm
+    "confusion",    // Added as it can indicate cognitive dissonance in sarcasm
+    "anger"         // Added as suppressed anger often appears in passive-aggressive sarcasm
   ];
 
   // Emotions that might appear high but could be misleading in sarcasm
@@ -36,7 +37,8 @@ export default function Expressions({
     "satisfaction",
     "pride",
     "interest",     // Added as it can mask sarcastic intent
-    "determination" // Added as it can appear in emphatic sarcasm
+    "determination", // Added as it can appear in emphatic sarcasm
+    "surprisePositive" // Added as it can appear in exaggerated sarcasm
   ];
 
   // Enhanced sarcasm detection function
@@ -53,6 +55,10 @@ export default function Expressions({
 
     // Calculate base sarcasm score
     let sarcasmScore = 0;
+    
+    // Get all emotions and sort them by score (moved up from below)
+    const allEmotions = R.values(scores);
+    const sortedScores = allEmotions.sort((a, b) => b - a);
 
     // Single strong indicator can be enough to establish a base score
     const strongIndicators = sarcasmIndicators
@@ -90,14 +96,12 @@ export default function Expressions({
       }
 
       // New condition: Multiple high emotions (conflict indicator)
-      const allEmotions = R.values(scores);
       const numHighEmotions = allEmotions.filter((score) => score > 0.15).length;
       if (numHighEmotions >= 3) {
         sarcasmScore += 0.1; // Emotional complexity suggests sarcasm
       }
 
       // New condition: No clear dominant emotion
-      const sortedScores = allEmotions.sort((a, b) => b - a);
       if (sortedScores[0] - sortedScores[1] < 0.1) {
         sarcasmScore += 0.1; // Lack of dominance suggests mixed intent
       }
@@ -119,13 +123,55 @@ export default function Expressions({
     if ((scores.determination || 0) > 0.25 && misleadingScores.length > 0) {
       sarcasmScore += 0.15;
     }
+    
+    // *** NEW PATTERNS TO IMPROVE DETECTION ***
+    
+    // Pattern: Extremely high excitement or joy can be a sarcasm signal
+    // This helps catch cases like "I am so excited. Not"
+    if ((scores.excitement || 0) > 0.6 || (scores.joy || 0) > 0.5) {
+      sarcasmScore += 0.2;
+    }
+    
+    // Pattern: Anger present alongside positive emotions is often sarcastic
+    if ((scores.anger || 0) > 0.15 && 
+        ((scores.excitement || 0) > 0.15 || (scores.joy || 0) > 0.15)) {
+      sarcasmScore += 0.25;
+    }
+    
+    // Pattern: Very high single emotion with almost no supporting emotions
+    // Often indicates exaggerated or fake emotion (sarcastic)
+    const dominantEmotionRatio = sortedScores[0] / (sortedScores[1] || 0.01);
+    if (sortedScores[0] > 0.4 && dominantEmotionRatio > 3) {
+      sarcasmScore += 0.15;
+    }
+    
+    // Pattern: High single positive emotion with negative undertones
+    const hasNegativeUndertones = ['disappointment', 'contempt', 'disgust', 'anger', 'distress']
+      .some(emotion => (scores[emotion as EmotionKey] || 0) > 0.10);
+    
+    if ((scores.excitement || 0) > 0.3 && hasNegativeUndertones) {
+      sarcasmScore += 0.3;
+    }
+    
+    // Pattern: Multiple contrasting emotions present (classic sarcasm signal)
+    const positiveEmotions = ['excitement', 'joy', 'pride', 'satisfaction']
+      .map(key => scores[key as EmotionKey] || 0)
+      .filter(score => score > 0.15);
+      
+    const negativeEmotions = ['anger', 'disappointment', 'contempt', 'disgust']
+      .map(key => scores[key as EmotionKey] || 0)
+      .filter(score => score > 0.15);
+    
+    if (positiveEmotions.length > 0 && negativeEmotions.length > 0) {
+      sarcasmScore += 0.3;
+    }
 
     return Math.min(1, sarcasmScore);
   };
 
   // Calculate sarcasm score and determine if it should be displayed
   const sarcasmScore = detectSarcasm(values);
-  const hasSarcasmIndicators = sarcasmScore > 0.2; // Lowered threshold for sensitivity
+  const hasSarcasmIndicators = sarcasmScore > 0.18; // Lowered threshold for sensitivity
 
   // Get sorted emotions for display
   const sortedEmotions = R.pipe(
