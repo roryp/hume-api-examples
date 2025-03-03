@@ -13,73 +13,86 @@ export default function Expressions({
 }: {
   values: Hume.empathicVoice.EmotionScores | undefined;
 }) {
-  if (!values) return;
+  if (!values) return null;
 
-  // Define potential sarcasm indicators - these emotions often combine to indicate sarcasm
-  // Using only valid emotion keys that might indicate sarcasm
+  // Refined sarcasm indicators based on analysis
   const sarcasmIndicators: EmotionKey[] = [
-    "amusement", 
-    "contempt", 
-    "confusion", 
-    "disappointment", 
-    "doubt",
-    "awkwardness"
+    "amusement",
+    "contempt",
+    "disappointment",
+    "awkwardness",
   ];
-  
-  // Emotions that often appear high in sarcastic responses but are misleading
+
+  // Emotions that might appear high but could be misleading in sarcasm
   const misleadingEmotions: EmotionKey[] = [
     "excitement",
     "joy",
     "satisfaction",
-    "pride"
+    "pride",
   ];
-  
-  // Get sarcasm score by analyzing certain emotions that might indicate sarcasm
+
+  // Enhanced sarcasm detection function
   const detectSarcasm = (scores: Hume.empathicVoice.EmotionScores) => {
-    // Get scores for the main sarcasm indicators
+    // Get scores for sarcasm indicators with a higher threshold
     const indicatorScores = sarcasmIndicators
-      .map(key => scores[key] || 0)
-      .filter(score => score > 0.1);
-      
+      .map((key) => scores[key] || 0)
+      .filter((score) => score > 0.15);
+
     // Get scores for potentially misleading emotions
     const misleadingScores = misleadingEmotions
-      .map(key => scores[key] || 0)
-      .filter(score => score > 0.2);
-    
-    // Calculate sarcasm base score from indicators
+      .map((key) => scores[key] || 0)
+      .filter((score) => score > 0.2);
+
+    // Calculate base sarcasm score
     let sarcasmScore = 0;
-    
+
     if (indicatorScores.length >= 2) {
       // Base score from indicator emotions
       sarcasmScore = indicatorScores.reduce((sum, score) => sum + score, 0) / indicatorScores.length;
-      
-      // Check for special patterns that strongly indicate sarcasm
-      if (scores.amusement > 0.1 && scores.contempt > 0.08) {
-        sarcasmScore += 0.2; // Amusement + contempt is a strong sarcasm signal
+
+      // Specific sarcasm patterns
+      if (scores.amusement > 0.2 && scores.contempt > 0.1) {
+        sarcasmScore += 0.2; // Strong sarcasm signal
       }
-      
+
       if (scores.awkwardness > 0.3) {
-        sarcasmScore += 0.15; // High awkwardness often indicates sarcasm
+        sarcasmScore += 0.15; // High awkwardness boost
       }
-      
-      // Detect contradiction patterns (high positive and negative emotions together)
-      if (misleadingScores.length >= 2 && indicatorScores.length >= 1) {
-        sarcasmScore += 0.25; // Contradiction pattern detected
+
+      // Contradiction pattern: positive and negative emotions
+      const indicatorEmotionScores = sarcasmIndicators
+        .map((key) => scores[key] || 0)
+        .filter((score) => score > 0.1);
+      if (misleadingScores.length >= 1 && indicatorEmotionScores.length >= 1) {
+        sarcasmScore += 0.25; // Mixed emotions detected
+      }
+
+      // New condition: Multiple high emotions (conflict indicator)
+      const allEmotions = R.values(scores);
+      const numHighEmotions = allEmotions.filter((score) => score > 0.15).length;
+      if (numHighEmotions >= 3) {
+        sarcasmScore += 0.1; // Emotional complexity suggests sarcasm
+      }
+
+      // New condition: No clear dominant emotion
+      const sortedScores = allEmotions.sort((a, b) => b - a);
+      if (sortedScores[0] - sortedScores[1] < 0.1) {
+        sarcasmScore += 0.1; // Lack of dominance suggests mixed intent
       }
     }
-    
+
     return Math.min(1, sarcasmScore);
   };
-  
-  // Check if there's a strong sarcasm indicator pattern
-  const sarcasmScore = detectSarcasm(values);
-  const hasSarcasmIndicators = sarcasmScore > 0.25; // Lowered threshold to catch more potential sarcasm
 
-  // Get sorted emotions with optional sarcasm indicator added
+  // Calculate sarcasm score and determine if it should be displayed
+  const sarcasmScore = detectSarcasm(values);
+  const hasSarcasmIndicators = sarcasmScore > 0.2; // Lowered threshold for sensitivity
+
+  // Get sorted emotions for display
   const baseEmotions = R.pipe(
     values,
     R.entries(),
-    R.sortBy(([_, value]) => -value), 
+    R.sortBy(([_, value]) => -value),
   );
 
   return (
@@ -88,11 +101,11 @@ export default function Expressions({
         "text-xs p-3 w-full border-t border-border flex flex-col md:flex-row flex-wrap gap-3"
       }
     >
-      {/* Special sarcasm indicator if we detect it */}
+      {/* Sarcasm indicator display */}
       {hasSarcasmIndicators && (
-        <div 
+        <div
           className={"w-full overflow-hidden mb-1"}
-          style={{ background: 'rgba(158, 68, 196, 0.1)', padding: '4px', borderRadius: '4px' }}
+          style={{ background: "rgba(158, 68, 196, 0.1)", padding: "4px", borderRadius: "4px" }}
         >
           <div className={"flex items-center justify-between gap-1 font-mono pb-1"}>
             <div className={"font-medium truncate font-bold"}>
@@ -101,7 +114,7 @@ export default function Expressions({
             <div className={"tabular-nums opacity-50"}>{sarcasmScore.toFixed(2)}</div>
           </div>
           <div className={"relative h-1"}>
-            <div className={"absolute top-0 left-0 size-full rounded-full opacity-10 bg-[#9e44c4]"}/>
+            <div className={"absolute top-0 left-0 size-full rounded-full opacity-10 bg-[#9e44c4]"} />
             <motion.div
               className={"absolute top-0 left-0 h-full bg-[#9e44c4] rounded-full"}
               initial={{ width: 0 }}
@@ -119,7 +132,7 @@ export default function Expressions({
           <div className={"flex items-center justify-between gap-1 font-mono pb-1"}>
             <div className={"font-medium truncate"}>
               {key}
-              {sarcasmIndicators.includes(key as EmotionKey) && hasSarcasmIndicators && ' ✓'}
+              {sarcasmIndicators.includes(key as EmotionKey) && hasSarcasmIndicators && " ✓"}
             </div>
             <div className={"tabular-nums opacity-50"}>{value.toFixed(2)}</div>
           </div>

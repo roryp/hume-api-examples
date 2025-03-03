@@ -2,7 +2,7 @@
   "name": "hume-evi-next-js-app-router",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://roryp.github.io/<your-repo-name>",
+  "homepage": "https://roryp.github.io/hume-api-examples",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
