@@ -76,13 +76,53 @@ The following table showcases some key emotions and patterns evaluated by the sa
 
 This enhanced algorithm provides real-time feedback on potential sarcasm detection, helping the EVI understand nuanced emotional contexts in conversations. The tooltip functionality adds transparency, allowing users to understand why certain statements were flagged as potentially sarcastic.
 
-## Project deployment
+## Getting Started
 
-Click the button below to deploy this example project with Vercel:
+### Prerequisites
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fhumeai%2Fhume-evi-next-js-starter&env=HUME_API_KEY,HUME_CLIENT_SECRET)
+- [Node.js](https://nodejs.org/) (v16 or later recommended)
+- [pnpm](https://pnpm.io/) package manager
+- A Hume API key (for access to the Empathic Voice Interface)
 
-Below are the steps to completing deployment:
+### Installation
 
-1. Create a Git Repository for your project.
-2. Provide the required environment variables. To get your API key and Client Secret key, log into the portal and visit the [API keys page](https://beta.hume.ai/settings/keys).
+1. Clone this repository:
+   ```bash
+   git clone <repository-url>
+   cd evi-next-js-app-router
+   ```
+
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+
+3. Set up environment variables:
+   Create a `.env.local` file in the root directory with your Hume API key:
+   ```
+   HUME_API_KEY=your_api_key_here
+   ```
+
+### Development
+
+To start the development server:
+
+```bash
+pnpm dev
+```
+
+The application will be available at [http://localhost:3000](http://localhost:3000).
+
+### Build for Production
+
+To create a production build:
+
+```bash
+pnpm build
+```
+
+To preview the production build locally:
+
+```bash
+pnpm start
+```
