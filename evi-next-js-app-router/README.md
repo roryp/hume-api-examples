@@ -38,6 +38,20 @@ This application includes an enhanced sarcasm detection feature that analyzes em
 
 This algorithm provides real-time feedback on potential sarcasm detection, enhancing the EVI's ability to understand nuanced emotional contexts in conversation.
 
+### Sarcasm Detection Table
+
+The following table showcases how the sarcasm detection system evaluates different emotions:
+
+| Emotion | Score | Color Code | Sarcasm Logic Description |
+|---------|-------|------------|--------------------------|
+| Sarcasm Detected | 1.00 | #8B0000 (Dark Red) | The statement's overriding ironic twist—this is the core signal of sarcasm. |
+| Awkwardness | 0.69 | #B22222 (Firebrick Red) | Reflects noticeable social tension from the self-contradiction. |
+| Amusement | 0.49 | #FF8C00 (Dark Orange) | Indicates a playful, humorous element that softens the irony. |
+| Embarrassment | 0.17 | #90EE90 (Light Green) | A subtle hint of self-consciousness in the contradictory claim. |
+| Disappointment | 0.12 | #7FFF00 (Chartreuse) | Suggests a mild ironic letdown, as if expectations aren't quite met. |
+| Contempt | 0.11 | #7CFC00 (Lawn Green) | A slight critical edge—almost a mock scorn—underneath the humorous tone. |
+| Realization | 0.10 | #ADFF2F (Green Yellow) | A very gentle nod to the awareness of the contradiction at play. |
+
 ## Project deployment
 
 Click the button below to deploy this example project with Vercel:
