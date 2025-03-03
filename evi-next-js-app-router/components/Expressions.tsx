@@ -8,12 +8,20 @@ import * as R from "remeda";
 // We'll use this type to safely access emotion keys
 type EmotionKey = keyof Hume.empathicVoice.EmotionScores;
 
+// New interface to track sarcasm contributions
+interface SarcasmContribution {
+  pattern: string;
+  score: number;
+  explanation: string;
+}
+
 export default function Expressions({
   values,
 }: {
   values: Hume.empathicVoice.EmotionScores | undefined;
 }) {
   const [showAllEmotions, setShowAllEmotions] = useState(false);
+  const [showSarcasmTooltip, setShowSarcasmTooltip] = useState(false);
   
   if (!values) return null;
 
@@ -56,6 +64,9 @@ export default function Expressions({
     // Calculate base sarcasm score
     let sarcasmScore = 0;
     
+    // Track contributions to the sarcasm score
+    const contributions: SarcasmContribution[] = [];
+    
     // Get all emotions and sort them by score (moved up from below)
     const allEmotions = R.values(scores);
     const sortedScores = allEmotions.sort((a, b) => b - a);
@@ -67,24 +78,65 @@ export default function Expressions({
     
     if (strongIndicators.length > 0) {
       // Start with a base level of sarcasm if any strong indicator is present
-      sarcasmScore = 0.15 + (strongIndicators[0] * 0.3);
+      const baseScore = 0.15 + (strongIndicators[0] * 0.3);
+      sarcasmScore = baseScore;
+      
+      // Log contribution
+      contributions.push({
+        pattern: "Strong sarcasm indicator",
+        score: baseScore,
+        explanation: `Strong presence of sarcasm-related emotions: ${sarcasmIndicators
+          .filter(key => (scores[key] || 0) > 0.2)
+          .map(key => `${key} (${(scores[key] || 0).toFixed(2)})`)
+          .join(', ')}`
+      });
     }
 
     // If we have multiple indicators, enhance the score
     if (indicatorScores.length >= 2) {
       // Base score from indicator emotions
-      sarcasmScore = Math.max(
-        sarcasmScore,
+      const indicatorBaseScore = Math.max(
+        0,
         indicatorScores.reduce((sum, score) => sum + score, 0) / indicatorScores.length
       );
+      
+      if (indicatorBaseScore > sarcasmScore) {
+        sarcasmScore = indicatorBaseScore;
+        
+        // Log contribution
+        contributions.push({
+          pattern: "Multiple sarcasm indicators",
+          score: indicatorBaseScore,
+          explanation: `Multiple sarcasm-related emotions detected: ${sarcasmIndicators
+            .filter(key => (scores[key] || 0) > 0.07)
+            .map(key => `${key} (${(scores[key] || 0).toFixed(2)})`)
+            .join(', ')}`
+        });
+      }
 
       // Specific sarcasm patterns
       if (scores.amusement > 0.2 && scores.contempt > 0.1) {
-        sarcasmScore += 0.2; // Strong sarcasm signal
+        const patternScore = 0.2;
+        sarcasmScore += patternScore;
+        
+        // Log contribution
+        contributions.push({
+          pattern: "Amusement + Contempt",
+          score: patternScore,
+          explanation: `Combination of amusement (${(scores.amusement || 0).toFixed(2)}) and contempt (${(scores.contempt || 0).toFixed(2)}), a classic sarcasm pattern`
+        });
       }
 
       if (scores.awkwardness > 0.3) {
-        sarcasmScore += 0.15; // High awkwardness boost
+        const patternScore = 0.15;
+        sarcasmScore += patternScore;
+        
+        // Log contribution
+        contributions.push({
+          pattern: "Awkwardness",
+          score: patternScore,
+          explanation: `High awkwardness (${(scores.awkwardness || 0).toFixed(2)}) often signals sarcastic comments`
+        });
       }
 
       // Contradiction pattern: positive and negative emotions
@@ -92,18 +144,42 @@ export default function Expressions({
         .map((key) => scores[key] || 0)
         .filter((score) => score > 0.1);
       if (misleadingScores.length >= 1 && indicatorEmotionScores.length >= 1) {
-        sarcasmScore += 0.25; // Mixed emotions detected
+        const patternScore = 0.25;
+        sarcasmScore += patternScore;
+        
+        // Log contribution
+        contributions.push({
+          pattern: "Mixed emotions",
+          score: patternScore,
+          explanation: `Contradictory mix of positive and negative emotions, common in sarcasm`
+        });
       }
 
       // New condition: Multiple high emotions (conflict indicator)
       const numHighEmotions = allEmotions.filter((score) => score > 0.15).length;
       if (numHighEmotions >= 3) {
-        sarcasmScore += 0.1; // Emotional complexity suggests sarcasm
+        const patternScore = 0.1;
+        sarcasmScore += patternScore;
+        
+        // Log contribution
+        contributions.push({
+          pattern: "Emotional complexity",
+          score: patternScore,
+          explanation: `${numHighEmotions} different emotions detected at significant levels, suggesting complex or mixed intent`
+        });
       }
 
       // New condition: No clear dominant emotion
       if (sortedScores[0] - sortedScores[1] < 0.1) {
-        sarcasmScore += 0.1; // Lack of dominance suggests mixed intent
+        const patternScore = 0.1;
+        sarcasmScore += patternScore;
+        
+        // Log contribution
+        contributions.push({
+          pattern: "No dominant emotion",
+          score: patternScore,
+          explanation: `No single emotion is clearly dominant, suggesting mixed or masked intent`
+        });
       }
     }
 
@@ -111,38 +187,86 @@ export default function Expressions({
     
     // Pattern: High contempt with any other high emotion often signals sarcasm
     if ((scores.contempt || 0) > 0.18) {
-      sarcasmScore = Math.max(sarcasmScore, 0.3);
+      const patternScore = Math.max(0, 0.2 - sarcasmScore);
+      if (patternScore > 0) {
+        sarcasmScore = Math.max(sarcasmScore, 0.2);
+        
+        // Log contribution
+        contributions.push({
+          pattern: "Contempt detected",
+          score: patternScore,
+          explanation: `Contempt (${(scores.contempt || 0).toFixed(2)}) present, often signals sarcastic intent`
+        });
+      }
     }
     
     // Pattern: Realization with amusement often indicates catching onto a joke
     if ((scores.realization || 0) > 0.2 && (scores.amusement || 0) > 0.15) {
-      sarcasmScore += 0.15;
+      const patternScore = 0.15;
+      sarcasmScore += patternScore;
+      
+      // Log contribution
+      contributions.push({
+        pattern: "Realization + Amusement",
+        score: patternScore,
+        explanation: `Combination of realization (${(scores.realization || 0).toFixed(2)}) and amusement (${(scores.amusement || 0).toFixed(2)}), often indicates recognizing sarcasm`
+      });
     }
     
     // Pattern: High determination with misleading emotions can suggest emphatic sarcasm
     if ((scores.determination || 0) > 0.25 && misleadingScores.length > 0) {
-      sarcasmScore += 0.15;
+      const patternScore = 0.15;
+      sarcasmScore += patternScore;
+      
+      // Log contribution
+      contributions.push({
+        pattern: "Emphatic sarcasm",
+        score: patternScore,
+        explanation: `Determination (${(scores.determination || 0).toFixed(2)}) combined with misleading emotions often indicates emphatic sarcasm`
+      });
     }
-    
-    // *** NEW PATTERNS TO IMPROVE DETECTION ***
     
     // Pattern: Extremely high excitement or joy can be a sarcasm signal
     // This helps catch cases like "I am so excited. Not"
     if ((scores.excitement || 0) > 0.6 || (scores.joy || 0) > 0.5) {
-      sarcasmScore += 0.2;
+      const patternScore = 0.2;
+      sarcasmScore += patternScore;
+      
+      // Log contribution
+      contributions.push({
+        pattern: "Exaggerated positive emotion",
+        score: patternScore,
+        explanation: `Unusually high ${(scores.excitement || 0) > (scores.joy || 0) ? 'excitement' : 'joy'} (${Math.max((scores.excitement || 0), (scores.joy || 0)).toFixed(2)}) often indicates sarcastic exaggeration`
+      });
     }
     
     // Pattern: Anger present alongside positive emotions is often sarcastic
     if ((scores.anger || 0) > 0.15 && 
         ((scores.excitement || 0) > 0.15 || (scores.joy || 0) > 0.15)) {
-      sarcasmScore += 0.25;
+      const patternScore = 0.25;
+      sarcasmScore += patternScore;
+      
+      // Log contribution
+      contributions.push({
+        pattern: "Anger + Positive emotion",
+        score: patternScore,
+        explanation: `Combination of anger (${(scores.anger || 0).toFixed(2)}) with positive emotions, a strong sarcasm indicator`
+      });
     }
     
     // Pattern: Very high single emotion with almost no supporting emotions
     // Often indicates exaggerated or fake emotion (sarcastic)
     const dominantEmotionRatio = sortedScores[0] / (sortedScores[1] || 0.01);
     if (sortedScores[0] > 0.4 && dominantEmotionRatio > 3) {
-      sarcasmScore += 0.15;
+      const patternScore = 0.15;
+      sarcasmScore += patternScore;
+      
+      // Log contribution
+      contributions.push({
+        pattern: "Exaggerated single emotion",
+        score: patternScore,
+        explanation: `One emotion is much stronger (${dominantEmotionRatio.toFixed(1)}x) than all others, suggesting possible exaggeration`
+      });
     }
     
     // Pattern: High single positive emotion with negative undertones
@@ -150,7 +274,15 @@ export default function Expressions({
       .some(emotion => (scores[emotion as EmotionKey] || 0) > 0.10);
     
     if ((scores.excitement || 0) > 0.3 && hasNegativeUndertones) {
-      sarcasmScore += 0.3;
+      const patternScore = 0.3;
+      sarcasmScore += patternScore;
+      
+      // Log contribution
+      contributions.push({
+        pattern: "Positive emotion + Negative undertones",
+        score: patternScore,
+        explanation: `Excitement (${(scores.excitement || 0).toFixed(2)}) with negative undertones, classic sarcasm pattern`
+      });
     }
     
     // Pattern: Multiple contrasting emotions present (classic sarcasm signal)
@@ -163,14 +295,27 @@ export default function Expressions({
       .filter(score => score > 0.15);
     
     if (positiveEmotions.length > 0 && negativeEmotions.length > 0) {
-      sarcasmScore += 0.3;
+      const patternScore = 0.3;
+      sarcasmScore += patternScore;
+      
+      // Log contribution
+      contributions.push({
+        pattern: "Contrasting emotions",
+        score: patternScore,
+        explanation: `Both positive and negative emotions present simultaneously, a strong indicator of sarcasm`
+      });
     }
 
-    return Math.min(1, sarcasmScore);
+    return {
+      score: Math.min(1, sarcasmScore),
+      contributions: contributions.sort((a, b) => b.score - a.score)
+    };
   };
 
   // Calculate sarcasm score and determine if it should be displayed
-  const sarcasmScore = detectSarcasm(values);
+  const sarcasmResult = detectSarcasm(values);
+  const sarcasmScore = sarcasmResult.score;
+  const sarcasmContributions = sarcasmResult.contributions;
   const hasSarcasmIndicators = sarcasmScore > 0.18; // Lowered threshold for sensitivity
 
   // Get sorted emotions for display
@@ -198,12 +343,15 @@ export default function Expressions({
       {/* Sarcasm indicator display - now more prominent if detected */}
       {hasSarcasmIndicators && (
         <div
-          className="w-full overflow-hidden mb-1 p-3 rounded-md"
+          className="w-full overflow-visible mb-1 p-3 rounded-md relative cursor-pointer"
           style={{ background: "rgba(158, 68, 196, 0.15)" }}
+          onMouseEnter={() => setShowSarcasmTooltip(true)}
+          onMouseLeave={() => setShowSarcasmTooltip(false)}
         >
           <div className="flex items-center justify-between gap-1 font-mono pb-2">
-            <div className="font-bold text-sm">
+            <div className="font-bold text-sm flex items-center gap-1">
               Sarcasm Detected 👀
+              <span className="opacity-50 text-xs font-normal">(hover for details)</span>
             </div>
             <div className="tabular-nums text-sm font-semibold">
               {(sarcasmScore * 100).toFixed(0)}%
@@ -219,6 +367,28 @@ export default function Expressions({
               }}
             />
           </div>
+          
+          {/* Tooltip for sarcasm details - fixed positioning and z-index */}
+          {showSarcasmTooltip && (
+            <div className="absolute left-0 top-full mt-2 z-50 bg-black/90 backdrop-blur-sm rounded-md shadow-lg p-3 w-80 text-white/90"
+                 style={{ maxWidth: "calc(100vw - 2rem)" }}>
+              <h4 className="text-sm font-medium mb-2 pb-1 border-b border-white/20">Sarcasm Detection Factors</h4>
+              <div className="max-h-60 overflow-y-auto">
+                {sarcasmContributions.map((contribution, index) => (
+                  <div key={index} className="mb-2 pb-2 border-b border-white/10 last:border-0">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">{contribution.pattern}</span>
+                      <span className="text-xs bg-white/10 px-1 rounded">+{(contribution.score * 100).toFixed(0)}%</span>
+                    </div>
+                    <p className="text-xs opacity-80 mt-0.5">{contribution.explanation}</p>
+                  </div>
+                ))}
+                {sarcasmContributions.length === 0 && (
+                  <p className="text-xs opacity-80">No specific pattern dominated the sarcasm detection.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
