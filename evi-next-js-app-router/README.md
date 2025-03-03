@@ -9,6 +9,35 @@
 
 This project features a sample implementation of Hume's [Empathic Voice Interface](https://hume.docs.buildwithfern.com/docs/empathic-voice-interface-evi/overview) using Hume's React SDK. Here, we have a simple EVI that uses the Next.js App Router.
 
+## Sarcasm Detection Algorithm
+
+This application includes an enhanced sarcasm detection feature that analyzes emotional signals from Hume's Empathic Voice Interface. The algorithm works by:
+
+1. **Identifying key sarcasm indicators**: The algorithm looks for specific emotions that often indicate sarcasm, including:
+   - Amusement
+   - Contempt
+   - Disappointment
+   - Awkwardness
+
+2. **Analyzing misleading emotions**: It evaluates potentially misleading emotions that might appear high during sarcastic speech:
+   - Excitement
+   - Joy
+   - Satisfaction
+   - Pride
+
+3. **Score calculation**: The sarcasm detector computes a score using multiple factors:
+   - Base score from the average of indicator emotions above a threshold (0.15)
+   - Specific emotion pattern bonuses:
+     - Amusement + contempt combination (+0.2)
+     - High awkwardness (+0.15)
+     - Contradictory positive and negative emotions (+0.25)
+     - Multiple high emotions indicating complexity (+0.1)
+     - Lack of dominant emotion (+0.1)
+
+4. **Threshold application**: Sarcasm is reported to the user when the computed score exceeds 0.2.
+
+This algorithm provides real-time feedback on potential sarcasm detection, enhancing the EVI's ability to understand nuanced emotional contexts in conversation.
+
 ## Project deployment
 
 Click the button below to deploy this example project with Vercel:
