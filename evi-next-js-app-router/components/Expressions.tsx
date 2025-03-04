@@ -4,6 +4,7 @@ import { expressionColors, isExpressionColor } from "@/utils/expressionColors";
 import { motion } from "framer-motion";
 import { CSSProperties, useState } from "react";
 import * as R from "remeda";
+import { SarcasmParameters, defaultSarcasmParameters } from "./SarcasmConfig";
 
 // We'll use this type to safely access emotion keys
 type EmotionKey = keyof Hume.empathicVoice.EmotionScores;
@@ -17,13 +18,24 @@ interface SarcasmContribution {
 
 export default function Expressions({
   values,
+  sarcasmParameters = defaultSarcasmParameters
 }: {
   values: Hume.empathicVoice.EmotionScores | undefined;
+  sarcasmParameters?: SarcasmParameters;
 }) {
   const [showAllEmotions, setShowAllEmotions] = useState(false);
   const [showSarcasmTooltip, setShowSarcasmTooltip] = useState(false);
   
   if (!values) return null;
+
+  // Get thresholds from parameters
+  const {
+    baseThreshold,
+    strongIndicatorThreshold,
+    indicatorScoreThreshold,
+    misleadingScoreThreshold,
+    detectionThreshold
+  } = sarcasmParameters.thresholds;
 
   // Refined sarcasm indicators based on analysis
   const sarcasmIndicators: EmotionKey[] = [
@@ -54,12 +66,12 @@ export default function Expressions({
     // Get scores for sarcasm indicators with a higher threshold
     const indicatorScores = sarcasmIndicators
       .map((key) => scores[key] || 0)
-      .filter((score) => score > 0.15);
+      .filter((score) => score > indicatorScoreThreshold);
 
     // Get scores for potentially misleading emotions
     const misleadingScores = misleadingEmotions
       .map((key) => scores[key] || 0)
-      .filter((score) => score > 0.2);
+      .filter((score) => score > misleadingScoreThreshold);
 
     // Calculate base sarcasm score
     let sarcasmScore = 0;
@@ -74,11 +86,11 @@ export default function Expressions({
     // Single strong indicator can be enough to establish a base score
     const strongIndicators = sarcasmIndicators
       .map((key) => scores[key] || 0)
-      .filter((score) => score > 0.25);
+      .filter((score) => score > strongIndicatorThreshold);
     
-    if (strongIndicators.length > 0) {
+    if (strongIndicators.length > 0 && sarcasmParameters.patternWeights["contemptDetected"].enabled) {
       // Start with a base level of sarcasm if any strong indicator is present
-      const baseScore = 0.15 + (strongIndicators[0] * 0.3);
+      const baseScore = baseThreshold + (strongIndicators[0] * 0.3);
       sarcasmScore = baseScore;
       
       // Log contribution
@@ -114,9 +126,10 @@ export default function Expressions({
         });
       }
 
-      // Specific sarcasm patterns
-      if (scores.amusement > 0.2 && scores.contempt > 0.1) {
-        const patternScore = 0.2;
+      // Specific sarcasm patterns based on configured weights
+      if (scores.amusement > 0.2 && scores.contempt > 0.1 && 
+          sarcasmParameters.patternWeights["amusementContempt"].enabled) {
+        const patternScore = sarcasmParameters.patternWeights["amusementContempt"].weight;
         sarcasmScore += patternScore;
         
         // Log contribution
@@ -127,8 +140,8 @@ export default function Expressions({
         });
       }
 
-      if (scores.awkwardness > 0.3) {
-        const patternScore = 0.15;
+      if (scores.awkwardness > 0.3 && sarcasmParameters.patternWeights["awkwardness"].enabled) {
+        const patternScore = sarcasmParameters.patternWeights["awkwardness"].weight;
         sarcasmScore += patternScore;
         
         // Log contribution
@@ -143,8 +156,9 @@ export default function Expressions({
       const indicatorEmotionScores = sarcasmIndicators
         .map((key) => scores[key] || 0)
         .filter((score) => score > 0.1);
-      if (misleadingScores.length >= 1 && indicatorEmotionScores.length >= 1) {
-        const patternScore = 0.25;
+      if (misleadingScores.length >= 1 && indicatorEmotionScores.length >= 1 && 
+          sarcasmParameters.patternWeights["contrastingEmotions"].enabled) {
+        const patternScore = sarcasmParameters.patternWeights["contrastingEmotions"].weight;
         sarcasmScore += patternScore;
         
         // Log contribution
@@ -157,8 +171,8 @@ export default function Expressions({
 
       // New condition: Multiple high emotions (conflict indicator)
       const numHighEmotions = allEmotions.filter((score) => score > 0.15).length;
-      if (numHighEmotions >= 3) {
-        const patternScore = 0.1;
+      if (numHighEmotions >= 3 && sarcasmParameters.patternWeights["emotionalComplexity"].enabled) {
+        const patternScore = sarcasmParameters.patternWeights["emotionalComplexity"].weight;
         sarcasmScore += patternScore;
         
         // Log contribution
@@ -170,8 +184,9 @@ export default function Expressions({
       }
 
       // New condition: No clear dominant emotion
-      if (sortedScores[0] - sortedScores[1] < 0.1) {
-        const patternScore = 0.1;
+      if (sortedScores[0] - sortedScores[1] < 0.1 && 
+          sarcasmParameters.patternWeights["noDominantEmotion"].enabled) {
+        const patternScore = sarcasmParameters.patternWeights["noDominantEmotion"].weight;
         sarcasmScore += patternScore;
         
         // Log contribution
@@ -186,10 +201,10 @@ export default function Expressions({
     // Additional patterns that might indicate sarcasm even without multiple indicators
     
     // Pattern: High contempt with any other high emotion often signals sarcasm
-    if ((scores.contempt || 0) > 0.18) {
-      const patternScore = Math.max(0, 0.2 - sarcasmScore);
+    if ((scores.contempt || 0) > 0.18 && sarcasmParameters.patternWeights["contemptDetected"].enabled) {
+      const patternScore = Math.max(0, sarcasmParameters.patternWeights["contemptDetected"].weight - sarcasmScore);
       if (patternScore > 0) {
-        sarcasmScore = Math.max(sarcasmScore, 0.2);
+        sarcasmScore = Math.max(sarcasmScore, sarcasmParameters.patternWeights["contemptDetected"].weight);
         
         // Log contribution
         contributions.push({
@@ -201,8 +216,9 @@ export default function Expressions({
     }
     
     // Pattern: Realization with amusement often indicates catching onto a joke
-    if ((scores.realization || 0) > 0.2 && (scores.amusement || 0) > 0.15) {
-      const patternScore = 0.15;
+    if ((scores.realization || 0) > 0.2 && (scores.amusement || 0) > 0.15 && 
+        sarcasmParameters.patternWeights["realizationAmusement"].enabled) {
+      const patternScore = sarcasmParameters.patternWeights["realizationAmusement"].weight;
       sarcasmScore += patternScore;
       
       // Log contribution
@@ -214,8 +230,9 @@ export default function Expressions({
     }
     
     // Pattern: High determination with misleading emotions can suggest emphatic sarcasm
-    if ((scores.determination || 0) > 0.25 && misleadingScores.length > 0) {
-      const patternScore = 0.15;
+    if ((scores.determination || 0) > 0.25 && misleadingScores.length > 0 && 
+        sarcasmParameters.patternWeights["emphaticSarcasm"].enabled) {
+      const patternScore = sarcasmParameters.patternWeights["emphaticSarcasm"].weight;
       sarcasmScore += patternScore;
       
       // Log contribution
@@ -228,8 +245,9 @@ export default function Expressions({
     
     // Pattern: Extremely high excitement or joy can be a sarcasm signal
     // This helps catch cases like "I am so excited. Not"
-    if ((scores.excitement || 0) > 0.6 || (scores.joy || 0) > 0.5) {
-      const patternScore = 0.2;
+    if (((scores.excitement || 0) > 0.6 || (scores.joy || 0) > 0.5) && 
+        sarcasmParameters.patternWeights["exaggeratedPositive"].enabled) {
+      const patternScore = sarcasmParameters.patternWeights["exaggeratedPositive"].weight;
       sarcasmScore += patternScore;
       
       // Log contribution
@@ -242,8 +260,9 @@ export default function Expressions({
     
     // Pattern: Anger present alongside positive emotions is often sarcastic
     if ((scores.anger || 0) > 0.15 && 
-        ((scores.excitement || 0) > 0.15 || (scores.joy || 0) > 0.15)) {
-      const patternScore = 0.25;
+        ((scores.excitement || 0) > 0.15 || (scores.joy || 0) > 0.15) &&
+        sarcasmParameters.patternWeights["angerPositive"].enabled) {
+      const patternScore = sarcasmParameters.patternWeights["angerPositive"].weight;
       sarcasmScore += patternScore;
       
       // Log contribution
@@ -257,8 +276,9 @@ export default function Expressions({
     // Pattern: Very high single emotion with almost no supporting emotions
     // Often indicates exaggerated or fake emotion (sarcastic)
     const dominantEmotionRatio = sortedScores[0] / (sortedScores[1] || 0.01);
-    if (sortedScores[0] > 0.4 && dominantEmotionRatio > 3) {
-      const patternScore = 0.15;
+    if (sortedScores[0] > 0.4 && dominantEmotionRatio > 3 && 
+        sarcasmParameters.patternWeights["exaggeratedSingleEmotion"].enabled) {
+      const patternScore = sarcasmParameters.patternWeights["exaggeratedSingleEmotion"].weight;
       sarcasmScore += patternScore;
       
       // Log contribution
@@ -273,8 +293,9 @@ export default function Expressions({
     const hasNegativeUndertones = ['disappointment', 'contempt', 'disgust', 'anger', 'distress']
       .some(emotion => (scores[emotion as EmotionKey] || 0) > 0.10);
     
-    if ((scores.excitement || 0) > 0.3 && hasNegativeUndertones) {
-      const patternScore = 0.3;
+    if ((scores.excitement || 0) > 0.3 && hasNegativeUndertones && 
+        sarcasmParameters.patternWeights["positiveNegativeUndertones"].enabled) {
+      const patternScore = sarcasmParameters.patternWeights["positiveNegativeUndertones"].weight;
       sarcasmScore += patternScore;
       
       // Log contribution
@@ -294,8 +315,9 @@ export default function Expressions({
       .map(key => scores[key as EmotionKey] || 0)
       .filter(score => score > 0.15);
     
-    if (positiveEmotions.length > 0 && negativeEmotions.length > 0) {
-      const patternScore = 0.3;
+    if (positiveEmotions.length > 0 && negativeEmotions.length > 0 && 
+        sarcasmParameters.patternWeights["contrastingEmotions"].enabled) {
+      const patternScore = sarcasmParameters.patternWeights["contrastingEmotions"].weight;
       sarcasmScore += patternScore;
       
       // Log contribution
@@ -316,7 +338,7 @@ export default function Expressions({
   const sarcasmResult = detectSarcasm(values);
   const sarcasmScore = sarcasmResult.score;
   const sarcasmContributions = sarcasmResult.contributions;
-  const hasSarcasmIndicators = sarcasmScore > 0.18; // Lowered threshold for sensitivity
+  const hasSarcasmIndicators = sarcasmScore > detectionThreshold;
 
   // Get sorted emotions for display
   const sortedEmotions = R.pipe(
