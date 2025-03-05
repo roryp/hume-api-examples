@@ -94,6 +94,33 @@ The following table showcases some key emotions and patterns evaluated by the sa
 
 This enhanced algorithm provides real-time feedback on potential sarcasm detection, helping the EVI understand nuanced emotional contexts in conversations. The tooltip functionality adds transparency, allowing users to understand why certain statements were flagged as potentially sarcastic.
 
+### Standalone Sarcasm Detector
+
+In addition to the integrated sarcasm detection within the Empathic Voice Interface, this application includes a dedicated Sarcasm Detector feature that can analyze:
+
+- **Text input**: Detect sarcasm in written text through advanced natural language processing
+- **Facial expressions**: Analyze images captured from your webcam to identify facial cues associated with sarcasm
+- **Voice recordings**: Detect sarcasm in spoken language by analyzing speech patterns and transcribed content
+
+The standalone Sarcasm Detector offers:
+
+- An intuitive tabbed interface for different analysis methods
+- Real-time capture from webcam and microphone
+- Detailed analysis reports that explain detected sarcastic elements
+- Integration with OpenAI's advanced language and vision models
+
+To use the Sarcasm Detector:
+
+1. Navigate to the "Sarcasm Detector" page using the navigation bar
+2. Select your preferred analysis method (text, webcam, or audio)
+3. Follow the instructions to provide input for analysis
+4. Review the detailed sarcasm analysis report
+
+**Note:** The Sarcasm Detector requires an OpenAI API key. Add this to your `.env.local` file:
+```
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
 ## Getting Started
 
 ### Prerequisites
@@ -144,4 +171,3 @@ To preview the production build locally:
 ```bash
 pnpm start
 ```
-````
