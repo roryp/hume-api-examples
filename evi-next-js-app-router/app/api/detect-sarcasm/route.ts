@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       ]
     });
     
-    const analysis = response.choices[0].message.content.trim();
+    const analysis = response.choices[0]?.message?.content?.trim() || 'No analysis available';
     return NextResponse.json({ result: analysis });
   } catch (error) {
     console.error('Error:', error);

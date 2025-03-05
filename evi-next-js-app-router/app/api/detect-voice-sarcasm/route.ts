@@ -59,7 +59,7 @@ export async function POST(request: Request) {
         ]
       });
       
-      const analysis = response.choices[0].message.content.trim();
+      const analysis = response.choices[0]?.message?.content?.trim() || 'No analysis available';
       
       // Clean up the temporary file
       fs.unlinkSync(tempFilePath);

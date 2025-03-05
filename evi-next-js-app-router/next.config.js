@@ -1,6 +1,6 @@
 module.exports = {
   basePath: '',
   assetPrefix: '',
-  output: 'export',
+  // Removing the 'output: export' setting to support API routes
   // ...existing config...
 };

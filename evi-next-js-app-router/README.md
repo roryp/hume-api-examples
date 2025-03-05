@@ -128,6 +128,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 - [Node.js](https://nodejs.org/) (v16 or later recommended)
 - [pnpm](https://pnpm.io/) package manager
 - A Hume API key (for access to the Empathic Voice Interface)
+- An OpenAI API key (for the Sarcasm Detector functionality)
 
 ### Installation
 
@@ -143,9 +144,10 @@ OPENAI_API_KEY=your_openai_api_key_here
    ```
 
 3. Set up environment variables:
-   Create a `.env.local` file in the root directory with your Hume API key:
+   Create a `.env.local` file in the root directory with your API keys:
    ```
-   HUME_API_KEY=your_api_key_here
+   HUME_API_KEY=your_hume_api_key_here
+   OPENAI_API_KEY=your_openai_api_key_here
    ```
 
 ### Development
@@ -166,8 +168,30 @@ To create a production build:
 pnpm build
 ```
 
-To preview the production build locally:
+### Running in Production Mode
 
-```bash
-pnpm start
-```
+This application contains API routes that require a server runtime to function properly. To run the application in production mode:
+
+1. Make sure the `next.config.js` file does NOT contain `output: 'export'`:
+   ```javascript
+   module.exports = {
+     basePath: '',
+     assetPrefix: '',
+     // other configurations...
+   };
+   ```
+
+2. Run the production server:
+   ```bash
+   pnpm start
+   ```
+
+   The application will be available at [http://localhost:3000](http://localhost:3000) by default.
+
+> **Important**: If you want to deploy this app as a static export (e.g., to GitHub Pages), note that the API routes (including sarcasm detection features) will not work as they require a server. In that case, you would need to modify the application to use client-side API calls or a separate backend service.
+
+### Troubleshooting
+
+- **API routes not working in production**: Ensure that `output: 'export'` is removed from `next.config.js` to support API routes.
+- **OpenAI API errors**: Verify that your OpenAI API key is correctly set in the `.env.local` file and that you have sufficient quota for API calls.
+- **Type errors related to response handling**: The application uses proper null checks when handling API responses to prevent TypeScript errors.
